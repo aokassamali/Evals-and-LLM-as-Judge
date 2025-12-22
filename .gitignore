@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Environments
+.venv/
+.env
+*.env
+
+# Outputs (generated)
+runs/
+metrics/
+reports/
+
+# Data (often large; we'll commit only small curated files later)
+data/raw/
