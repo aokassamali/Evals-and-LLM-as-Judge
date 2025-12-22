@@ -12,6 +12,24 @@ sys.path.append(str(Path(__file__).resolve().parent))
 from ollama_client import call_ollama_generate, OllamaResult  # noqa: E402
 
 
+
+DEFAULT_TEMPLATE = """Return ONLY valid JSON with keys: label, evidence_sent_ids, rationale.
+label must be one of: SUPPORTS, REFUTES, NEI.
+evidence_sent_ids must be a list of integers (can be empty).
+rationale must be a single STRING (not a list/array) and <= 2 sentences.
+
+Claim: "{claim}"
+Evidence sentences (numbered):
+{evidence_block}
+
+Decide SUPPORTS/REFUTES/NEI and cite which sentence numbers support your decision.
+"""
+
+def load_prompt_template(prompt_file: str | None) -> str:
+    if not prompt_file:
+        return DEFAULT_TEMPLATE
+    return Path(prompt_file).read_text(encoding="utf-8")
+
 def read_jsonl(path: Path) -> Iterable[Dict[str, Any]]:
     with path.open("r", encoding="utf-8") as f:
         for line_no, line in enumerate(f, start=1):
@@ -68,50 +86,18 @@ def normalize_label(label: str) -> str:
     return mapping.get(x, x)
 
 
-def build_prompt_from_row(row: Dict[str, Any]) -> str:
-    """
-    We support two input styles:
-      A) row contains a prebuilt 'prompt' string (we just send it).
-      B) row contains 'claim' and 'evidence' list -> we format a prompt.
+def build_prompt_from_row(row: dict, template: str) -> str:
+    claim = (row.get("claim") or "").strip()
+    evidence = row.get("evidence") or []
 
-    Evidence format expected for style (B):
-      evidence = [{"sent_id": 1, "sentence": "..."}, ...]
-    """
-    if "prompt" in row and isinstance(row["prompt"], str) and row["prompt"].strip():
-        return row["prompt"].strip()
+    evidence_lines = []
+    for e in evidence:
+        sid = e.get("sent_id")
+        sent = (e.get("sentence") or "").strip()
+        evidence_lines.append(f"{sid}) {sent}")
+    evidence_block = "\n".join(evidence_lines)
 
-    claim = row.get("claim")
-    evidence = row.get("evidence")
-
-    if not isinstance(claim, str) or not claim.strip():
-        raise ValueError("Row missing 'claim' (string) and no 'prompt' provided.")
-
-    if not isinstance(evidence, list) or len(evidence) == 0:
-        raise ValueError("Row missing 'evidence' (non-empty list) and no 'prompt' provided.")
-
-    # Build numbered evidence block
-    lines = []
-    for item in evidence:
-        sent_id = item.get("sent_id")
-        sent = item.get("sentence")
-        if not isinstance(sent_id, int) or not isinstance(sent, str):
-            raise ValueError("Evidence items must have {'sent_id': int, 'sentence': str}.")
-        lines.append(f'{sent_id}) "{sent.strip()}"')
-
-    evidence_block = "\n".join(lines)
-
-    prompt = f"""Return ONLY valid JSON with keys: label, evidence_sent_ids, rationale.
-label must be one of: SUPPORTS, REFUTES, NEI.
-evidence_sent_ids must be a list of integers (can be empty).
-rationale must be <= 2 sentences.
-
-Claim: "{claim.strip()}"
-Evidence sentences (numbered):
-{evidence_block}
-
-Decide SUPPORTS/REFUTES/NEI and cite which sentence numbers support your decision.
-"""
-    return prompt
+    return template.format(claim=claim, evidence_block=evidence_block)
 
 
 def sha256_text(s: str) -> str:
@@ -167,7 +153,10 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=0, help="If >0, process only first N rows.")
     parser.add_argument("--resume", action="store_true", help="Skip rows whose IDs are already in output.")
     parser.add_argument("--print_every", type=int, default=10, help="Log progress every N rows.")
+    parser.add_argument("--prompt_file", type=str, default=None)
     args = parser.parse_args()
+
+    template = load_prompt_template(args.prompt_file)
 
     input_path = Path(args.input)
     output_path = Path(args.output)
@@ -190,7 +179,8 @@ def main() -> int:
             continue
 
         try:
-            prompt = build_prompt_from_row(row)
+            prompt = build_prompt_from_row(row, template)
+            
         except Exception as e:
             # Prompt construction error: write it out as an error record
             out = {

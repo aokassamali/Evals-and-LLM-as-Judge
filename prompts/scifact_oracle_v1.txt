@@ -1,0 +1,10 @@
+Return ONLY valid JSON with keys: label, evidence_sent_ids, rationale.
+label must be one of: SUPPORTS, REFUTES, NEI.
+evidence_sent_ids must be a list of integers (can be empty).
+rationale must be a single STRING (not a list/array) and <= 2 sentences.
+
+Claim: "{claim}"
+Evidence sentences (numbered):
+{evidence_block}
+
+Decide SUPPORTS/REFUTES/NEI and cite which sentence numbers support your decision.
