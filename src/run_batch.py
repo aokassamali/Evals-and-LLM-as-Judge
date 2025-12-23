@@ -3,14 +3,14 @@ import hashlib
 import json
 import time
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable
 
 # Make it easy to import from src/ without packaging yet
 import sys
 sys.path.append(str(Path(__file__).resolve().parent))
 
-from ollama_client import call_ollama_generate, OllamaResult  # noqa: E402
-
+from run_judge import run_judge, ModelSpec  # noqa: E402
+from ollama_client import OllamaResult  # noqa: E402
 
 
 DEFAULT_TEMPLATE = """Return ONLY valid JSON with keys: label, evidence_sent_ids, rationale.
@@ -41,32 +41,23 @@ def read_jsonl(path: Path) -> Iterable[Dict[str, Any]]:
             except json.JSONDecodeError as e:
                 raise RuntimeError(f"Invalid JSON on line {line_no} in {path}: {e}")
 
-
 def append_jsonl(path: Path, obj: Dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(obj, ensure_ascii=False) + "\n")
 
-
 def load_completed_ids(output_path: Path) -> set[str]:
-    """
-    Allows resume: if the output file already has results, we skip IDs already processed.
-    """
     if not output_path.exists():
         return set()
     done: set[str] = set()
     for row in read_jsonl(output_path):
         rid = row.get("id")
-        if isinstance(rid, str):
+        err = row.get("error")
+        if isinstance(rid, str) and not err and row.get("validated") is not None:
             done.add(rid)
     return done
 
-
 def normalize_label(label: str) -> str:
-    """
-    Normalize common label variants into SUPPORTS/REFUTES/NEI.
-    Keeps evaluation robust to small output formatting differences.
-    """
     if not isinstance(label, str):
         return "INVALID"
     x = label.strip().upper()
@@ -85,40 +76,33 @@ def normalize_label(label: str) -> str:
     }
     return mapping.get(x, x)
 
-
 def build_prompt_from_row(row: dict, template: str) -> str:
     claim = (row.get("claim") or "").strip()
     evidence = row.get("evidence") or []
-
     evidence_lines = []
     for e in evidence:
         sid = e.get("sent_id")
         sent = (e.get("sentence") or "").strip()
         evidence_lines.append(f"{sid}) {sent}")
     evidence_block = "\n".join(evidence_lines)
-
     return template.format(claim=claim, evidence_block=evidence_block)
-
 
 def sha256_text(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
-
 def result_row(
     input_row: Dict[str, Any],
     prompt: str,
+    backend: str,
     model: str,
     host: str,
     temperature: float,
     res: OllamaResult,
     elapsed_s: float,
 ) -> Dict[str, Any]:
-    """
-    Produce a single JSON-serializable output record (one line in runs/*.jsonl).
-    Includes raw output + validated fields + error info for debugging.
-    """
     out: Dict[str, Any] = {
         "id": input_row.get("id"),
+        "backend": backend,
         "model": model,
         "host": host,
         "temperature": temperature,
@@ -126,15 +110,11 @@ def result_row(
         "elapsed_s": elapsed_s,
         "raw_text": res.raw_text,
         "error": res.error,
+        "parsed_json": res.parsed_json,
     }
 
-    # Always store parsed JSON if we got it
-    out["parsed_json"] = res.parsed_json
-
-    # If schema validated, store a clean canonical version
     if res.validated is not None:
         canon = res.validated.model_dump()
-        # Normalize label for downstream metrics robustness
         canon["label"] = normalize_label(canon.get("label", ""))
         out["validated"] = canon
     else:
@@ -142,11 +122,11 @@ def result_row(
 
     return out
 
-
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=str, required=True, help="Path to input JSONL.")
     parser.add_argument("--output", type=str, required=True, help="Path to output JSONL (appended).")
+    parser.add_argument("--backend", type=str, default="ollama", help="ollama | openai (default: ollama)")
     parser.add_argument("--model", type=str, required=True)
     parser.add_argument("--host", type=str, default="http://localhost:11434")
     parser.add_argument("--temperature", type=float, default=0.0)
@@ -157,16 +137,24 @@ def main() -> int:
     args = parser.parse_args()
 
     template = load_prompt_template(args.prompt_file)
-
     input_path = Path(args.input)
     output_path = Path(args.output)
 
     done_ids = load_completed_ids(output_path) if args.resume else set()
 
+    spec = ModelSpec(
+        backend=args.backend,
+        model=args.model,
+        host=args.host,
+        temperature=args.temperature,
+    )
+
     n_total = 0
     n_skipped = 0
     n_ok = 0
     n_err = 0
+
+    host_field = args.host if args.backend == "ollama" else "openai"
 
     for row in read_jsonl(input_path):
         n_total += 1
@@ -180,13 +168,12 @@ def main() -> int:
 
         try:
             prompt = build_prompt_from_row(row, template)
-            
         except Exception as e:
-            # Prompt construction error: write it out as an error record
-            out = {
+            append_jsonl(output_path, {
                 "id": rid,
+                "backend": args.backend,
                 "model": args.model,
-                "host": args.host,
+                "host": host_field,
                 "temperature": args.temperature,
                 "prompt_sha256": None,
                 "elapsed_s": 0.0,
@@ -194,25 +181,20 @@ def main() -> int:
                 "parsed_json": None,
                 "validated": None,
                 "error": f"Prompt build error: {e}",
-            }
-            append_jsonl(output_path, out)
+            })
             n_err += 1
             continue
 
         t0 = time.time()
-        res = call_ollama_generate(
-            host=args.host,
-            model=args.model,
-            prompt=prompt,
-            temperature=args.temperature,
-        )
+        res = run_judge(spec, prompt=prompt)
         elapsed = time.time() - t0
 
         out = result_row(
             input_row=row,
             prompt=prompt,
+            backend=args.backend,
             model=args.model,
-            host=args.host,
+            host=host_field,
             temperature=args.temperature,
             res=res,
             elapsed_s=elapsed,
@@ -225,13 +207,10 @@ def main() -> int:
             n_ok += 1
 
         if args.print_every and (n_total % args.print_every == 0):
-            print(
-                f"[{n_total}] ok={n_ok} err={n_err} skipped={n_skipped} -> {output_path}"
-            )
+            print(f"[{n_total}] ok={n_ok} err={n_err} skipped={n_skipped} -> {output_path}")
 
     print(f"Done. processed={n_total} ok={n_ok} err={n_err} skipped={n_skipped}")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

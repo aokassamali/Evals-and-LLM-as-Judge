@@ -27,6 +27,7 @@ def fmt_seconds(s: float) -> str:
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--input", required=True, help="Path to input JSONL (gold)")
+    p.add_argument("--backend", default="ollama", help="ollama | openai")
     p.add_argument("--out_dir", default="runs", help="Directory for run outputs")
     p.add_argument("--prompt_file", required=True, help="Prompt template file path")
     p.add_argument("--host", default="http://localhost:11434")
@@ -60,6 +61,7 @@ def main() -> int:
             sys.executable, "src/run_batch.py",
             "--input", args.input,
             "--output", str(out_path),
+            "--backend", args.backend,
             "--model", model,
             "--host", args.host,
             "--temperature", str(args.temperature),

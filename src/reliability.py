@@ -3,6 +3,7 @@ import itertools
 import json
 from collections import Counter, defaultdict
 from typing import Dict, List, Tuple
+from pathlib import Path
 
 
 DEFAULT_LABELS = ["SUPPORTS", "REFUTES", "NEI"]
@@ -127,10 +128,23 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--runs",
-        nargs="+",
-        required=True,
+        nargs="*",
+        default=None,
         help="Paths to run JSONL files (from run_batch.py).",
     )
+    parser.add_argument(
+        "--runs_dir",
+        type=str,
+        default=None,
+        help="Directory containing run JSONL files.",
+    )
+    parser.add_argument(
+        "--glob",
+        type=str,
+        default="*.jsonl",
+        help="Glob used inside --runs_dir (e.g. scifact_dev200_*_t0.0.jsonl).",
+    )
+
     parser.add_argument(
         "--names",
         nargs="*",
@@ -157,8 +171,15 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    run_paths: List[str] = args.runs
-    run_names: List[str] = args.names if args.names else [f"run{i+1}" for i in range(len(run_paths))]
+    if args.runs_dir:
+        run_paths = [str(p) for p in sorted(Path(args.runs_dir).glob(args.glob)) if p.is_file()]
+    else:
+        run_paths = args.runs or []
+
+    if not run_paths:
+        parser.error("Provide either --runs <files...> or --runs_dir <dir> (optionally with --glob).")
+
+    run_names: List[str] = args.names if args.names else [Path(p).stem for p in run_paths]
     if len(run_names) != len(run_paths):
         raise RuntimeError("If provided, --names must have the same length as --runs.")
 
