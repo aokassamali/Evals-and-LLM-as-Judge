@@ -1,0 +1,40 @@
+{
+  "n_errors_in_run": 0,
+  "counts": {
+    "label_scored": 200,
+    "evidence_scored": 200
+  },
+  "label": {
+    "n_scored": 200,
+    "accuracy": 0.69,
+    "macro_f1": 0.6557991286296233,
+    "labels_order": [
+      "SUPPORTS",
+      "REFUTES",
+      "NEI"
+    ],
+    "confusion_matrix": [
+      [
+        49,
+        7,
+        18
+      ],
+      [
+        11,
+        20,
+        21
+      ],
+      [
+        3,
+        2,
+        69
+      ]
+    ]
+  },
+  "evidence": {
+    "n_scored": 200,
+    "mean_precision": 0.649,
+    "mean_recall": 0.8661666666666669,
+    "mean_f1": 0.6643333333333333
+  }
+}
