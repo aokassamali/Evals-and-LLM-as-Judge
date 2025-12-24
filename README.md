@@ -4,15 +4,10 @@ How reliable are LLMs when used as evaluators? This project measures inter-model
 
 ## Key Findings
 
-**Frontier vs. local model gap is massive.** GPT-5.2 achieves 78% accuracy on SciFact claim verification; the best local model (Qwen3 8B) hits 69%. Smaller local models cluster around 45-48%.
-
-**Inter-model agreement is poor.** Fleiss' kappa across all 5 models is 0.16 (slight agreement). Even the best-performing pair (GPT-5.2 ↔ Qwen3) only reaches κ = 0.47.
-
-**171 of 198 claims (86%) produce disagreement** across the model set. This isn't random noise—models systematically disagree on hedged language, causal claims, and NEI boundaries.
-
-**Local models over-predict SUPPORTS.** Gemma3 and Llama3.1 label 70-80% of claims as SUPPORTS; the ground truth is 37%. They struggle to identify refuting or insufficient evidence.
-
-**Evidence citation is unreliable.** Local models frequently cite all available sentences ("shotgun" pattern) or cite nothing. Only GPT-5.2 shows calibrated evidence selection.
+- **Inter-model agreement is poor.** Fleiss' kappa across all 5 models is 0.16 (slight agreement). Even the best-performing pair (GPT-5.2 ↔ Qwen3) only reaches κ = 0.47.
+- **Model quality matters more than size.** Qwen3 8B (69%) substantially outperforms other similar-sized local models (45-48%).-
+- **Evidence quality correlates with model capability.** GPT-5.2 shows calibrated citation, Qwen3 shows moderate shotgunning (10%), and smaller models cite excessively (20-25%).
+- **Same-sized models are not interchangeable.** Among 8B models, accuracy ranges from 45% (Llama3.1) to 69% (Qwen3) - a 24-point spread that's comparable to the 9-point gap between Qwen3 and frontier GPT-5.2. Model selection matters more than parameter count.
 
 ## Results
 
