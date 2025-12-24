@@ -1,0 +1,84 @@
+{
+  "n_errors_in_run": 0,
+  "n_missing_gold": 0,
+  "label": {
+    "n_scored": 200,
+    "accuracy": 0.45,
+    "macro_f1": 0.40878856593142304,
+    "labels_order": [
+      "SUPPORTS",
+      "REFUTES",
+      "NEI"
+    ],
+    "confusion_matrix": [
+      [
+        57,
+        12,
+        5
+      ],
+      [
+        27,
+        19,
+        6
+      ],
+      [
+        38,
+        22,
+        14
+      ]
+    ],
+    "per_class": {
+      "SUPPORTS": {
+        "precision": 0.4672131147540984,
+        "recall": 0.7702702702702703,
+        "f1": 0.5816326530612245,
+        "support": 74
+      },
+      "REFUTES": {
+        "precision": 0.3584905660377358,
+        "recall": 0.36538461538461536,
+        "f1": 0.3619047619047619,
+        "support": 52
+      },
+      "NEI": {
+        "precision": 0.56,
+        "recall": 0.1891891891891892,
+        "f1": 0.2828282828282828,
+        "support": 74
+      }
+    },
+    "pred_counts": {
+      "NEI": 25,
+      "SUPPORTS": 122,
+      "REFUTES": 53
+    },
+    "true_counts": {
+      "SUPPORTS": 74,
+      "NEI": 74,
+      "REFUTES": 52
+    }
+  },
+  "evidence": {
+    "n_scored": 200,
+    "mean_precision": 0.33012932900432906,
+    "mean_recall": 0.778,
+    "mean_f1": 0.3309711122211121,
+    "avg_predicted_sentences": 2.835,
+    "avg_gold_sentences": 1.035,
+    "avg_candidate_sentences": 9.315,
+    "pct_pred_empty_overall": 0.025,
+    "pct_empty_when_pred_non_nei": 0.0,
+    "pct_nonempty_when_pred_nei": 0.8,
+    "n_pred_non_nei": 175,
+    "n_pred_nei": 25,
+    "pct_cite_all_unnecessary": 0.075,
+    "pct_pred_shotgun": 0.22,
+    "correct_label_wrong_evidence": 15,
+    "wrong_label_right_evidence": 98,
+    "shotgun_thresholds": {
+      "prec_cutoff": 0.7,
+      "extra_abs": 2,
+      "extra_mult": 1.5
+    }
+  }
+}
