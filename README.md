@@ -196,10 +196,12 @@ MIT
 If you use this work, please cite:
 
 ```
-@misc{kassamali2024llmjudge,
+@misc{kassamali2025llmjudge,
   author = {Kassamali, Asad},
   title = {LLM-as-Judge Reliability Study},
-  year = {2024},
-  url = {https://github.com/aokassamali/Evals-and-LLM-as-Judge}
+  year = {2025},
+  month = {December},
+  url = {https://github.com/aokassamali/Evals-and-LLM-as-Judge},
+  note = {GitHub repository}
 }
 ```
