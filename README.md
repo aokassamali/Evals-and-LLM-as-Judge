@@ -20,10 +20,10 @@ How reliable are LLMs when used as evaluators? This project measures inter-model
 
 | Model | Accuracy | Macro F1 | Evidence P | Evidence R | Evidence F1 |
 |-------|----------|----------|------------|------------|-------------|
-| GPT-5.2 | **0.780** | **0.780** | **0.733** | 0.876 | **0.741** |
+| GPT-5.2 | **0.780** | **0.780** | **0.733** | **0.876** | **0.741** |
 | Qwen3 8B | 0.690 | 0.656 | 0.649 | 0.866 | 0.664 |
 | DeepSeek-R1 8B | 0.480 | 0.389 | 0.568 | 0.779 | 0.597 |
-| Gemma3 4B | 0.470 | 0.388 | 0.397 | **0.871** | 0.424 |
+| Gemma3 4B | 0.470 | 0.388 | 0.397 | 0.871 | 0.424 |
 | Llama3.1 8B | 0.450 | 0.409 | 0.330 | 0.778 | 0.331 |
 
 ### Inter-Model Agreement (Cohen's Kappa)
